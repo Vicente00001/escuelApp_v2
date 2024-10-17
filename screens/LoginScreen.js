@@ -27,15 +27,18 @@ const LoginScreen = () => {
 
     const handleSignIn = () => {
         signInWithEmailAndPassword(auth, email, password)
-        .then((userCredential) => {
-            console.log('Signed In!')
+          .then((userCredential) => {
+            console.log('Signed In!');
             const user = userCredential.user;
-            console.log(user)
-        })
-        .catch(error => {
-            console.log(error)
-        })
-    }
+            console.log(user);
+      
+            navigation.navigate('Home');
+          })
+          .catch(error => {
+            console.log(error);
+          });
+      };
+      
     
 
     return (
@@ -71,10 +74,11 @@ const LoginScreen = () => {
           <Button
             mode="contained"
             style={styles.loginButton}
-            onPress={() => navigation.navigate('Home')} // Navegar a la pantalla de inicio
-          >
+            onPress={handleSignIn}  // Solo llama a la función handleSignIn aquí
+>
             Iniciar sesión
           </Button>
+
         </View>
       </ScrollView>
     </SafeAreaView>
