@@ -6,7 +6,7 @@ import HomeScreen from './screens/HomeScreen';
 import NewsScreen from './screens/NewsScreen';
 import AsistScreen from './screens/AsistScreen';
 import ForumScreen from './screens/ForumScreen';
-import GradesScreen from './screens/GradesScreen';
+import GradesScreen from './services/GradesScreen';
 import ForgotPasswordScreen from './screens/ForgotPasswordScreen'; // Importar la nueva pantalla
 import { UserProvider } from './services/UserContext'; // Importa el UserProvider
 
