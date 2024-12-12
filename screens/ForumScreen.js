@@ -1,10 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Modal } from 'react-native';
 import { Card, Button } from 'react-native-paper';
-import { collection, query, where, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, where, getDocs, addDoc, serverTimestamp, doc, updateDoc, arrayUnion } from 'firebase/firestore';
 import { firestore } from '../services/firebase';
+import { UserNameContext } from '../services/UserNameContext';
 
 const ForumScreen = ({ navigation }) => {
+  const { nombreApoderado } = useContext(UserNameContext); // Obtén el userId del contexto
   const [forums, setForums] = useState([]);
   const [selectedForum, setSelectedForum] = useState(null);
   const [comments, setComments] = useState([]);
@@ -21,10 +23,11 @@ const ForumScreen = ({ navigation }) => {
       const querySnapshot = await getDocs(forumsQuery);
       const forumList = querySnapshot.docs.map((doc) => {
         const data = doc.data();
+        console.log('Foro:', data);
         return {
           id: doc.id,
-          titulo: data.titulo,
-          descripcion: data.descripcion,
+          titulo: data.title,
+          descripcion: data.description,
         };
       });
       setForums(forumList);
@@ -41,6 +44,14 @@ const ForumScreen = ({ navigation }) => {
       );
       const querySnapshot = await getDocs(commentsQuery);
       const commentList = querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+
+      // Ordenar los comentarios por fecha en orden ascendente
+      commentList.sort((a, b) => {
+        const dateA = a.fecha && typeof a.fecha.toDate === 'function' ? a.fecha.toDate() : new Date(0);
+        const dateB = b.fecha && typeof b.fecha.toDate === 'function' ? b.fecha.toDate() : new Date(0);
+        return dateA - dateB;
+      });
+
       setComments(commentList);
     } catch (error) {
       console.error('Error fetching comments:', error);
@@ -57,11 +68,24 @@ const ForumScreen = ({ navigation }) => {
     if (!newComment.trim()) return;
 
     try {
-      await addDoc(collection(firestore, 'ForoComentario'), {
+      const newCommentData = {
         comentario: newComment,
         fecha: serverTimestamp(),
         foroId: selectedForum.id,
-        nombre: 'Usuario Anónimo', // Cambia esto por el nombre del usuario si tienes autenticación
+        nombre: nombreApoderado, // Cambiar por el nombre del usuario
+      };
+
+      const commentRef = await addDoc(collection(firestore, 'ForoComentario'), newCommentData);
+
+      // Agregar el comentario a la entidad de foro sin serverTimestamp()
+      const forumRef = doc(firestore, 'Foro', selectedForum.id);
+      await updateDoc(forumRef, {
+        comentarios: arrayUnion({
+          comentario: newComment,
+          fecha: new Date(), // Usar la fecha actual en lugar de serverTimestamp()
+          foroId: selectedForum.id,
+          nombre: nombreApoderado,
+        })
       });
 
       setNewComment('');
@@ -105,8 +129,8 @@ const ForumScreen = ({ navigation }) => {
                 <Text style={styles.commentDate}>
                   {comment.fecha
                     ? new Date(
-                        typeof comment.fecha.toDate === 'function' ? comment.fecha.toDate() : comment.fecha
-                      ).toLocaleString()
+                      typeof comment.fecha.toDate === 'function' ? comment.fecha.toDate() : comment.fecha
+                    ).toLocaleString()
                     : 'Fecha no disponible'}
                 </Text>
               </View>

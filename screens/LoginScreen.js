@@ -5,6 +5,8 @@ import { useNavigation } from '@react-navigation/native';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../services/firebase';
 import { UserContext } from '../services/UserContext'; // Importar el contexto del usuario
+import { doc, getDoc } from 'firebase/firestore'; // IMPORTA ESTAS FUNCIONES
+import { firestore } from '../services/firebase'; // Importa Firestore desde firebase.js
 
 const LoginScreen = () => {
   const navigation = useNavigation();
@@ -30,14 +32,21 @@ const LoginScreen = () => {
     }
 
     signInWithEmailAndPassword(auth, email, password) // Usa la instancia de auth desde firebase.js
-      .then((userCredential) => {
-        console.log('Signed In!');
+      .then(async (userCredential) => {
         const user = userCredential.user;
         console.log('Usuario logueado:', user.uid);
+        console.log('Obteniendo datos del apoderado con ID:', user.uid);
+        const apoderadoRef = doc(firestore, 'Apoderados', user.uid); // Refiere el documento en Firestore usando user.uid
+        const apoderadoSnap = await getDoc(apoderadoRef); // Obtén el documento
+
+        if (!apoderadoSnap.exists()) {
+          setErrorMessage('El Apoderado no existe')
+          return;
+        } 
 
         // Guardar el userId en el contexto
         setUserId(user.uid);
-
+        setErrorMessage('');
         // Navegar a la pantalla de inicio si el inicio de sesión es exitoso
         navigation.navigate('Home');
       })

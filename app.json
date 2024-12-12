@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "E_App",
-    "slug": "E_App",
+    "name": "Bajos Cerros",
+    "slug": "bajos-cerros",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -19,15 +19,17 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.EscuelApp.E_App"
+      "permissions": ["INTERNET"],
+      "package": "com.escuelapp.eapp"
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "extra": {
       "eas": {
-        "projectId": "30786b7a-c246-41af-8ab3-f56932c08519"
+        "projectId": "64ab27e6-a445-47dc-abd8-8fe3e82ede3e"
       }
-    }
+    },
+    "owner": "gbaldessari"
   }
 }

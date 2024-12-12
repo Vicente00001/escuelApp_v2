@@ -3,10 +3,12 @@ import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-nati
 import { Card } from 'react-native-paper';
 import { firestore } from '../services/firebase'; // Importa Firestore desde firebase.js
 import { UserContext } from '../services/UserContext'; // Importa el contexto del usuario
+import { UserNameContext } from '../services/UserNameContext'; // Importa el contexto del nombre del apoderado
 import { doc, getDoc } from 'firebase/firestore'; // IMPORTA ESTAS FUNCIONES
 
 const HomeScreen = ({ navigation }) => {
   const { userId } = useContext(UserContext); // Obtén el userId del contexto
+  const { setNombreApoderado } = useContext(UserNameContext);// Asegúrate de que el contexto esté definido
   const [apoderadoNombre, setApoderadoNombre] = useState('');
 
   useEffect(() => {
@@ -19,7 +21,9 @@ const HomeScreen = ({ navigation }) => {
         if (apoderadoSnap.exists()) {
           const data = apoderadoSnap.data();
           console.log('Datos del apoderado:', data);
-          setApoderadoNombre(`${data.nombre} ${data.apellido}`); // Ajusta según los campos de tu colección
+          setApoderadoNombre(data.nombre + " " + data.apellido); // Ajusta según los campos de tu colección
+          console.log(`Nombre del apoderado: ${apoderadoNombre}`);
+          setNombreApoderado(apoderadoNombre);
         } else {
           console.log('No se encontró el apoderado con el ID proporcionado.');
         }
@@ -49,7 +53,7 @@ const HomeScreen = ({ navigation }) => {
           <Card.Content>
             <Text style={styles.notificationTitle}>Última notificación:</Text>
             <Text style={styles.notificationText}>
-              Tu profesor ha publicado una actualización importante en el foro.
+              Proximamente
             </Text>
             <TouchableOpacity
               style={styles.moreInfoButton}

@@ -3,10 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-nati
 import { Card } from 'react-native-paper';
 
 const newsTopics = [
-  { title: 'Actualización del Plan de Estudios', teacher: 'Prof. Martínez', content: 'Se han realizado actualizaciones importantes en el plan de estudios para este semestre. Revisa los cambios en el sitio web del colegio.' },
-  { title: 'Próximo Examen de Matemáticas', teacher: 'Prof. González', content: 'El examen de matemáticas se realizará el próximo lunes. Asegúrate de revisar los temas en el portal de exámenes.' },
-  { title: 'Actividades Extracurriculares', teacher: 'Prof. Rodríguez', content: 'Este mes comenzaremos una serie de actividades extracurriculares. Consulta la agenda para más detalles sobre horarios y fechas.' },
-  { title: 'Reunión de Padres', teacher: 'Prof. Fernández', content: 'La próxima reunión de padres se llevará a cabo el viernes a las 18:00 en el auditorio. Tu asistencia es muy importante.' },
+  { title: 'Proximamente', teacher: 'Profesor Prueba', content: 'Esta seccion estará disponible pronto.' },
 ];
 
 const NewsScreen = ({ navigation }) => {

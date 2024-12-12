@@ -1,9 +1,9 @@
 import React, { useEffect, useState, useContext } from 'react';
-import { View, Text, StyleSheet, ScrollView, Picker } from 'react-native';
-import { Card, Button } from 'react-native-paper';
+import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { firestore } from '../services/firebase';
 import { UserContext } from '../services/UserContext';
+import { Picker } from '@react-native-picker/picker'; // Importar Picker desde @react-native-picker/picker
 
 const GradesScreen = () => {
   const [students, setStudents] = useState([]);
@@ -108,26 +108,20 @@ const GradesScreen = () => {
   };
 
   const calculateAverage = (evaluations) => {
-    if (!evaluations || evaluations.length === 0) return '-';
-    const total = evaluations.reduce((sum, evaluation) => sum + evaluation, 0);
-    return (total / evaluations.length).toFixed(2);
+    const validEvaluations = evaluations.filter(evaluation => evaluation > 0);
+    if (validEvaluations.length === 0) return '-';
+    const total = validEvaluations.reduce((sum, evaluation) => sum + evaluation, 0);
+    return (total / validEvaluations.length).toFixed(2);
   };
 
   const calculateOverallAverage = () => {
     if (!grades || grades.length === 0) return '-';
-    const totalGrades = grades.reduce(
-      (sum, grade) => sum + grade.evaluaciones.reduce((acc, val) => acc + val, 0),
-      0
-    );
-    const totalEntries = grades.reduce(
-      (count, grade) => count + grade.evaluaciones.filter((val) => val > 0).length,
-      0
-    );
-    return totalEntries > 0 ? (totalGrades / totalEntries).toFixed(2) : '-';
+    const totalAverages = grades.reduce((sum, grade) => {
+      const average = parseFloat(calculateAverage(grade.evaluaciones));
+      return sum + (isNaN(average) ? 0 : average);
+    }, 0);
+    return (totalAverages / grades.length).toFixed(2);
   };
-  
-
-  
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
@@ -172,7 +166,7 @@ const GradesScreen = () => {
                 </Text>
                 {grade.evaluaciones.map((evaluation, evalIndex) => (
                   <Text key={evalIndex} style={styles.tableCell}>
-                    {evaluation || 0}
+                    {evaluation > 0 ? evaluation : ''}
                   </Text>
                 ))}
                 <Text style={styles.tableCell}>{calculateAverage(grade.evaluaciones)}</Text>
@@ -187,14 +181,6 @@ const GradesScreen = () => {
             </View>
           </View>
         )}
-
-        <Button
-          mode="contained"
-          style={styles.backButton}
-          onPress={() => console.log('[GradesScreen] Volver al menú principal')}
-        >
-          <Text style={styles.buttonText}>Volver al menú principal</Text>
-        </Button>
       </View>
     </ScrollView>
   );

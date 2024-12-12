@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { ScrollView, Text, TouchableOpacity, StyleSheet, Picker } from 'react-native';
+import { ScrollView, Text, TouchableOpacity, StyleSheet, View } from 'react-native';
+import { Picker } from '@react-native-picker/picker';
 import { firestore } from '../services/firebase';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
 import { UserContext } from '../services/UserContext';
 
 const AttendanceScreen = ({ navigation }) => {
   const [students, setStudents] = useState([]);
   const [selectedStudent, setSelectedStudent] = useState('');
-  const [attendance, setAttendance] = useState([]);
+  const [attendance, setAttendance] = useState({});
   const [currentWeek, setCurrentWeek] = useState(0);
   const [subjects, setSubjects] = useState({});
   const { userId } = useContext(UserContext);
@@ -59,16 +60,22 @@ const AttendanceScreen = ({ navigation }) => {
 
   const fetchAttendance = async (studentId) => {
     try {
-      const studentQuery = query(
-        collection(firestore, 'Alumnos'),
-        where('id', '==', studentId)
-      );
-      const querySnapshot = await getDocs(studentQuery);
-      if (!querySnapshot.empty) {
-        const data = querySnapshot.docs[0].data();
-        setAttendance(data.asistencia || []);
+      const studentRef = doc(firestore, 'Alumnos', studentId);
+      const studentDoc = await getDoc(studentRef);
+      if (studentDoc.exists()) {
+        const data = studentDoc.data();
+        const attendanceBySubject = {};
+
+        data.asistencia.forEach((entry) => {
+          if (!attendanceBySubject[entry.asignaturaId]) {
+            attendanceBySubject[entry.asignaturaId] = [];
+          }
+          attendanceBySubject[entry.asignaturaId].push(entry);
+        });
+
+        setAttendance(attendanceBySubject);
       } else {
-        setAttendance([]);
+        setAttendance({});
       }
     } catch (error) {
       console.error('[AttendanceScreen] Error al obtener la asistencia:', error);
@@ -96,8 +103,9 @@ const AttendanceScreen = ({ navigation }) => {
     setCurrentWeek(currentWeek + direction);
   };
 
-  const getAttendanceForDay = (date) => {
-    const dayAttendance = attendance.find((entry) => entry.fecha === date);
+  const getAttendanceForDay = (date, subjectId) => {
+    const subjectAttendance = attendance[subjectId] || [];
+    const dayAttendance = subjectAttendance.find((entry) => entry.fecha === date);
     if (dayAttendance) {
       return {
         status: dayAttendance.asistencia ? 'Presente' : 'Ausente',
@@ -140,22 +148,27 @@ const AttendanceScreen = ({ navigation }) => {
       )}
 
       {selectedStudent && (
-        <>
-          {weekDays.map(({ date, name }) => {
-            const { status, color } = getAttendanceForDay(date);
-            return (
-              <Text
-                key={date}
-                style={[
-                  styles.attendanceItem,
-                  { backgroundColor: color },
-                ]}
-              >
-                {name} - {status}
-              </Text>
-            );
-          })}
-        </>
+        <ScrollView>
+          {Object.keys(subjects).map((subjectId) => (
+            <View key={subjectId}>
+              <Text style={styles.subjectTitle}>{subjects[subjectId]}</Text>
+              {weekDays.map(({ date, name }) => {
+                const { status, color } = getAttendanceForDay(date, subjectId);
+                return (
+                  <Text
+                    key={date}
+                    style={[
+                      styles.attendanceItem,
+                      { backgroundColor: color },
+                    ]}
+                  >
+                    {name} - {status}
+                  </Text>
+                );
+              })}
+            </View>
+          ))}
+        </ScrollView>
       )}
 
       <TouchableOpacity
@@ -199,6 +212,12 @@ const styles = StyleSheet.create({
     color: '#003366',
     marginVertical: 8,
     textAlign: 'center',
+  },
+  subjectTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#003366',
+    marginVertical: 8,
   },
   attendanceItem: {
     fontSize: 16,
