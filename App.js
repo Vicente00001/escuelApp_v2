@@ -4,9 +4,9 @@ import { createStackNavigator } from '@react-navigation/stack';
 import LoginScreen from './screens/LoginScreen';
 import HomeScreen from './screens/HomeScreen';
 import NewsScreen from './screens/NewsScreen';
-import AsistScreen from './screens/AsistScreen';
+import AsistScreen from './screens/AttendanceScreen';
 import ForumScreen from './screens/ForumScreen';
-import GradesScreen from './services/GradesScreen';
+import GradesScreen from './screens/GradesScreen';
 import ForgotPasswordScreen from './screens/ForgotPasswordScreen'; // Importar la nueva pantalla
 import { UserProvider } from './services/UserContext'; // Importa el UserProvider
 

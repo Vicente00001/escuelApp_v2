@@ -2,9 +2,8 @@ import React, { useState, useContext } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, SafeAreaView } from 'react-native';
 import { Button } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
-import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
-import { initializeApp } from 'firebase/app';
-import { firebaseConfig } from '../firebase-config';
+import { signInWithEmailAndPassword } from 'firebase/auth';
+import { auth } from '../services/firebase';
 import { UserContext } from '../services/UserContext'; // Importar el contexto del usuario
 
 const LoginScreen = () => {
@@ -13,9 +12,6 @@ const LoginScreen = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [errorMessage, setErrorMessage] = useState(''); // Estado para almacenar el mensaje de error
-
-  const app = initializeApp(firebaseConfig);
-  const auth = getAuth(app);
 
   const handleSignIn = () => {
     if (!email && !password) {
@@ -33,7 +29,7 @@ const LoginScreen = () => {
       return;
     }
 
-    signInWithEmailAndPassword(auth, email, password)
+    signInWithEmailAndPassword(auth, email, password) // Usa la instancia de auth desde firebase.js
       .then((userCredential) => {
         console.log('Signed In!');
         const user = userCredential.user;

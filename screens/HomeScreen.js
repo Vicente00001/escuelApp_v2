@@ -1,12 +1,47 @@
-import React from 'react';
+import React, { useEffect, useState, useContext } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import { Card } from 'react-native-paper';
+import { firestore } from '../services/firebase'; // Importa Firestore desde firebase.js
+import { UserContext } from '../services/UserContext'; // Importa el contexto del usuario
+import { doc, getDoc } from 'firebase/firestore'; // IMPORTA ESTAS FUNCIONES
 
 const HomeScreen = ({ navigation }) => {
+  const { userId } = useContext(UserContext); // Obtén el userId del contexto
+  const [apoderadoNombre, setApoderadoNombre] = useState('');
+
+  useEffect(() => {
+    const fetchApoderado = async () => {
+      try {
+        console.log('Obteniendo datos del apoderado con ID:', userId);
+        const apoderadoRef = doc(firestore, 'Apoderados', userId); // Refiere el documento en Firestore
+        const apoderadoSnap = await getDoc(apoderadoRef); // Obtén el documento
+
+        if (apoderadoSnap.exists()) {
+          const data = apoderadoSnap.data();
+          console.log('Datos del apoderado:', data);
+          setApoderadoNombre(`${data.nombre} ${data.apellido}`); // Ajusta según los campos de tu colección
+        } else {
+          console.log('No se encontró el apoderado con el ID proporcionado.');
+        }
+      } catch (error) {
+        console.error('Error al obtener los datos del apoderado:', error);
+      }
+    };
+
+    if (userId) {
+      fetchApoderado();
+    }
+  }, [userId]);
+
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <View style={styles.header}>
         <Text style={styles.schoolName}>Colegio Bajos del Cerro Chico</Text>
+        {apoderadoNombre ? (
+          <Text style={styles.welcomeText}>Bienvenido, {apoderadoNombre}</Text>
+        ) : (
+          <Text style={styles.welcomeText}>Cargando...</Text>
+        )}
       </View>
 
       <View style={styles.notificationContainer}>
@@ -66,6 +101,11 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     color: '#FFFFFF',
+  },
+  welcomeText: {
+    fontSize: 16,
+    color: '#FFFFFF',
+    marginTop: 8,
   },
   notificationContainer: {
     padding: 16,

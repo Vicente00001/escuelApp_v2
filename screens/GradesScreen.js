@@ -1,80 +1,133 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useContext } from 'react';
 import { View, Text, StyleSheet, ScrollView, Picker } from 'react-native';
 import { Card, Button } from 'react-native-paper';
-import { getAlumnosdeUnApoderado, obtenerNotas } from './auth.services';
+import { collection, query, where, getDocs } from 'firebase/firestore';
+import { firestore } from '../services/firebase';
+import { UserContext } from '../services/UserContext';
 
 const GradesScreen = () => {
   const [students, setStudents] = useState([]);
   const [selectedStudent, setSelectedStudent] = useState('');
-  const [evaluations, setEvaluations] = useState([]);
+  const [grades, setGrades] = useState([]);
+  const [subjects, setSubjects] = useState({});
+  const { userId } = useContext(UserContext);
 
   useEffect(() => {
-    console.log('Fetching students...');
-    fetchStudents();
-  }, []);
+    if (userId) {
+      console.log('[GradesScreen] Buscando alumnos con apoderadoId:', userId);
+      fetchStudents(userId);
+      fetchSubjects();
+    } else {
+      console.warn('[GradesScreen] No se encontró un ID de usuario en el contexto.');
+    }
+  }, [userId]);
 
-  const fetchStudents = async () => {
+  const fetchStudents = async (apoderadoId) => {
     try {
-      const response = await getAlumnosdeUnApoderado('USER_ID'); // Reemplaza con ID dinámico si aplica
-      if (response.success) {
-        console.log('Students fetched successfully:', response.data);
-        setStudents(Array.isArray(response.data) ? response.data : []);
+      console.log('[GradesScreen] Consultando la colección "Alumnos" en Firestore con apoderadoId:', apoderadoId);
+
+      const studentsQuery = query(
+        collection(firestore, 'Alumnos'),
+        where('apoderadoId', '==', apoderadoId)
+      );
+      const querySnapshot = await getDocs(studentsQuery);
+
+      if (!querySnapshot.empty) {
+        console.log(`[GradesScreen] Se encontraron ${querySnapshot.size} documentos en la colección "Alumnos".`);
+        const alumnos = querySnapshot.docs.map((doc) => {
+          const data = doc.data();
+          console.log(`[GradesScreen] Documento ID=${doc.id}:`, data);
+          return {
+            id: doc.id,
+            nombre: data.nombre,
+            apellido: data.apellido,
+            notas: data.notas || [], // Manejar si "notas" no existe
+          };
+        });
+        setStudents(alumnos);
       } else {
-        console.error('Error fetching students:', response.error);
+        console.warn('[GradesScreen] No se encontraron alumnos asociados al apoderado.');
         setStudents([]);
       }
     } catch (error) {
-      console.error('Unexpected error fetching students:', error);
-      setStudents([]);
+      console.error('[GradesScreen] Error al obtener los alumnos desde Firestore:', error);
     }
   };
 
-  const fetchGrades = async (studentId) => {
-    console.log('Fetching grades for student ID:', studentId);
+  const fetchSubjects = async () => {
     try {
-      const response = await obtenerNotas(studentId);
-      if (response.success) {
-        console.log('Grades fetched successfully:', response.data);
-        setEvaluations(ordenarNotas(response.data));
+      console.log('[GradesScreen] Consultando la colección "Asignaturas" en Firestore...');
+      const subjectsQuery = collection(firestore, 'Asignaturas');
+      const querySnapshot = await getDocs(subjectsQuery);
+
+      if (!querySnapshot.empty) {
+        const subjectsMap = {};
+        querySnapshot.docs.forEach((doc) => {
+          const data = doc.data();
+          subjectsMap[doc.id] = data.nombre; // Mapear el ID al nombre de la asignatura
+        });
+        console.log('[GradesScreen] Mapeo de asignaturas:', subjectsMap);
+        setSubjects(subjectsMap);
       } else {
-        console.error('Error fetching grades:', response.error);
+        console.warn('[GradesScreen] No se encontraron asignaturas en Firestore.');
       }
     } catch (error) {
-      console.error('Unexpected error fetching grades:', error);
+      console.error('[GradesScreen] Error al obtener las asignaturas desde Firestore:', error);
     }
   };
 
-  const ordenarNotas = (notas) => {
-    const evaluaciones = [];
+  const handleStudentChange = (studentId) => {
+    setSelectedStudent(studentId);
+    const student = students.find((s) => s.id === studentId);
+    if (student) {
+      console.log('[GradesScreen] Notas del alumno seleccionado:', student.notas);
+      const processedGrades = processGrades(student.notas);
+      setGrades(processedGrades);
+    } else {
+      setGrades([]);
+    }
+  };
+
+  const processGrades = (notas) => {
+    const gradeMap = {};
     notas.forEach((nota) => {
-      const index = evaluaciones.findIndex((e) => e.asignatura === nota.asignatura);
-      if (index === -1) {
-        evaluaciones.push({ asignatura: nota.asignatura, notas: [nota.calificacion] });
+      if (!gradeMap[nota.asignaturaId]) {
+        gradeMap[nota.asignaturaId] = { evaluaciones: [0, 0, 0] };
+      }
+      const index = gradeMap[nota.asignaturaId].evaluaciones.findIndex((val) => val === 0);
+      if (index !== -1) {
+        gradeMap[nota.asignaturaId].evaluaciones[index] = nota.calificacion;
       } else {
-        evaluaciones[index].notas.push(nota.calificacion);
+        gradeMap[nota.asignaturaId].evaluaciones.push(nota.calificacion);
       }
     });
-    return evaluaciones;
+    return Object.keys(gradeMap).map((asignaturaId) => ({
+      asignaturaId,
+      evaluaciones: gradeMap[asignaturaId].evaluaciones,
+    }));
   };
 
-  const calculateAverage = (grades) => {
-    if (grades.length === 0) return '-';
-    const total = grades.reduce((sum, grade) => sum + grade, 0);
-    return (total / grades.length).toFixed(2);
+  const calculateAverage = (evaluations) => {
+    if (!evaluations || evaluations.length === 0) return '-';
+    const total = evaluations.reduce((sum, evaluation) => sum + evaluation, 0);
+    return (total / evaluations.length).toFixed(2);
   };
 
-  const overallAverage = (
-    evaluations.reduce((sum, evaluation) => {
-      const avg = evaluation.notas.length ? parseFloat(calculateAverage(evaluation.notas)) : 0;
-      return sum + avg;
-    }, 0) / evaluations.filter((e) => e.notas.length > 0).length
-  ).toFixed(2);
-
-  const handleStudentChange = (studentId) => {
-    setSelectedStudent(studentId || '');
-    console.log('Selected student ID:', studentId);
-    if (studentId) fetchGrades(studentId);
+  const calculateOverallAverage = () => {
+    if (!grades || grades.length === 0) return '-';
+    const totalGrades = grades.reduce(
+      (sum, grade) => sum + grade.evaluaciones.reduce((acc, val) => acc + val, 0),
+      0
+    );
+    const totalEntries = grades.reduce(
+      (count, grade) => count + grade.evaluaciones.filter((val) => val > 0).length,
+      0
+    );
+    return totalEntries > 0 ? (totalGrades / totalEntries).toFixed(2) : '-';
   };
+  
+
+  
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
@@ -89,36 +142,57 @@ const GradesScreen = () => {
           style={styles.picker}
         >
           <Picker.Item label="Seleccione un alumno" value="" />
-          {Array.isArray(students) &&
+          {students.length > 0 ? (
             students.map((student) => (
-              <Picker.Item key={student.id} label={`${student.nombre} ${student.apellido}`} value={student.id} />
-            ))}
+              <Picker.Item
+                key={student.id}
+                label={`${student.nombre} ${student.apellido}`}
+                value={student.id}
+              />
+            ))
+          ) : (
+            <Picker.Item label="No hay alumnos disponibles" value="" />
+          )}
         </Picker>
 
-        {selectedStudent !== '' && (
-          <View>
-            {evaluations.map((evaluation) => (
-              <Card key={evaluation.asignatura} style={styles.gradeCard}>
-                <Card.Content>
-                  <Text style={styles.subject}>{evaluation.asignatura}</Text>
-                  {evaluation.notas.map((nota, index) => (
-                    <Text key={index} style={styles.grade}>Nota {index + 1}: {nota}</Text>
-                  ))}
-                  <Text style={styles.average}>Promedio: {calculateAverage(evaluation.notas)}</Text>
-                </Card.Content>
-              </Card>
+        {selectedStudent !== '' && grades.length > 0 && (
+          <View style={styles.tableContainer}>
+            <Text style={styles.tableHeader}>Tabla de Notas</Text>
+            <View style={styles.tableRow}>
+              <Text style={[styles.tableCell, styles.boldText]}>Asignatura</Text>
+              <Text style={[styles.tableCell, styles.boldText]}>Evaluación 1</Text>
+              <Text style={[styles.tableCell, styles.boldText]}>Evaluación 2</Text>
+              <Text style={[styles.tableCell, styles.boldText]}>Evaluación 3</Text>
+              <Text style={[styles.tableCell, styles.boldText]}>Promedio</Text>
+            </View>
+            {grades.map((grade, index) => (
+              <View key={index} style={styles.tableRow}>
+                <Text style={styles.tableCell}>
+                  {subjects[grade.asignaturaId] || 'Asignatura desconocida'}
+                </Text>
+                {grade.evaluaciones.map((evaluation, evalIndex) => (
+                  <Text key={evalIndex} style={styles.tableCell}>
+                    {evaluation || 0}
+                  </Text>
+                ))}
+                <Text style={styles.tableCell}>{calculateAverage(grade.evaluaciones)}</Text>
+              </View>
             ))}
-
-            <Card style={styles.overallCard}>
-              <Card.Content>
-                <Text style={styles.subject}>Promedio General</Text>
-                <Text style={styles.overallAverage}>{overallAverage}</Text>
-              </Card.Content>
-            </Card>
+            <View style={styles.tableRow}>
+              <Text style={[styles.tableCell, styles.boldText]}>Promedio General</Text>
+              <Text style={styles.tableCell}></Text>
+              <Text style={styles.tableCell}></Text>
+              <Text style={styles.tableCell}></Text>
+              <Text style={[styles.tableCell, styles.boldText]}>{calculateOverallAverage()}</Text>
+            </View>
           </View>
         )}
 
-        <Button mode="contained" style={styles.backButton} onPress={() => console.log('Back to main menu')}>
+        <Button
+          mode="contained"
+          style={styles.backButton}
+          onPress={() => console.log('[GradesScreen] Volver al menú principal')}
+        >
           <Text style={styles.buttonText}>Volver al menú principal</Text>
         </Button>
       </View>
@@ -155,39 +229,30 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFF',
     borderRadius: 4,
   },
-  gradeCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 8,
-    elevation: 2,
-    marginBottom: 16,
+  tableContainer: {
+    marginTop: 16,
   },
-  subject: {
+  tableHeader: {
     fontSize: 18,
     fontWeight: 'bold',
     color: '#003366',
-  },
-  grade: {
-    fontSize: 16,
-    color: '#000000',
     marginBottom: 8,
   },
-  average: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#003366',
+  tableRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 8,
   },
-  overallCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 8,
-    elevation: 2,
-    marginBottom: 16,
-    padding: 16,
-  },
-  overallAverage: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#003366',
+  tableCell: {
+    flex: 1,
     textAlign: 'center',
+    borderWidth: 1,
+    borderColor: '#003366',
+    padding: 4,
+    backgroundColor: '#FFF',
+  },
+  boldText: {
+    fontWeight: 'bold',
   },
   backButton: {
     marginTop: 24,
