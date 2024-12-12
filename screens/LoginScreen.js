@@ -1,48 +1,72 @@
-import React from 'react';
+import React, { useState, useContext } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, SafeAreaView } from 'react-native';
 import { Button } from 'react-native-paper';
-import { useNavigation } from '@react-navigation/native'; // Importar el hook de navegación
-import {getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth'; 
+import { useNavigation } from '@react-navigation/native';
+import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
 import { initializeApp } from 'firebase/app';
 import { firebaseConfig } from '../firebase-config';
+import { UserContext } from '../services/UserContext'; // Importar el contexto del usuario
 
 const LoginScreen = () => {
-  const navigation = useNavigation(); // Obtener la referencia de la navegación
-    const [email, setEmail] = React.useState('')
-    const [password, setPassword] = React.useState('')
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    
-    const handleCreateAccount = () => {
-        createUserWithEmailAndPassword(auth, email, password)
-        .then((userCredential) => {
-            console.log('Account created!')
-            const user = userCredential.user;
-            console.log(user)
-        })
-        .catch(error => {
-            console.log(error)
-        })
+  const navigation = useNavigation();
+  const { setUserId } = useContext(UserContext); // Obtener la función para actualizar el contexto
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [errorMessage, setErrorMessage] = useState(''); // Estado para almacenar el mensaje de error
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+
+  const handleSignIn = () => {
+    if (!email && !password) {
+      setErrorMessage('Por favor, ingresa tu correo y contraseña.');
+      return;
     }
 
-    const handleSignIn = () => {
-        signInWithEmailAndPassword(auth, email, password)
-          .then((userCredential) => {
-            console.log('Signed In!');
-            const user = userCredential.user;
-            console.log(user);
-      
-            navigation.navigate('Home');
-          })
-          .catch(error => {
-            console.log(error);
-          });
-      };
-      
-    
+    if (!email) {
+      setErrorMessage('Por favor, ingresa tu correo.');
+      return;
+    }
 
-    return (
-    <SafeAreaView style={styles.safeContainer}> 
+    if (!password) {
+      setErrorMessage('Por favor, ingresa tu contraseña.');
+      return;
+    }
+
+    signInWithEmailAndPassword(auth, email, password)
+      .then((userCredential) => {
+        console.log('Signed In!');
+        const user = userCredential.user;
+        console.log('Usuario logueado:', user.uid);
+
+        // Guardar el userId en el contexto
+        setUserId(user.uid);
+
+        // Navegar a la pantalla de inicio si el inicio de sesión es exitoso
+        navigation.navigate('Home');
+      })
+      .catch((error) => {
+        console.log(error);
+
+        // Mostrar mensaje de error según el código de Firebase
+        switch (error.code) {
+          case 'auth/user-not-found':
+            setErrorMessage('El usuario no existe. Verifica tu correo.');
+            break;
+          case 'auth/wrong-password':
+            setErrorMessage('La contraseña es incorrecta. Inténtalo de nuevo.');
+            break;
+          case 'auth/invalid-email':
+            setErrorMessage('El formato del correo no es válido.');
+            break;
+          default:
+            setErrorMessage('Ocurrió un error. Por favor, intenta de nuevo.');
+        }
+      });
+  };
+
+  return (
+    <SafeAreaView style={styles.safeContainer}>
       <ScrollView contentContainerStyle={styles.container}>
         <View style={styles.header}>
           <Text style={styles.schoolName}>Colegio Bajos del Cerro Chico</Text>
@@ -51,12 +75,17 @@ const LoginScreen = () => {
         <View style={styles.innerContainer}>
           <Text style={styles.title}>¡Bienvenido de vuelta! Por favor inicia sesión</Text>
 
+          {errorMessage ? (
+            <Text style={styles.errorText}>{errorMessage}</Text>
+          ) : null}
+
           <TextInput
             onChangeText={(text) => setEmail(text)}
             style={styles.input}
             placeholder="Correo electrónico"
             keyboardType="email-address"
             placeholderTextColor="#B0BEC5"
+            value={email}
           />
 
           <TextInput
@@ -65,20 +94,16 @@ const LoginScreen = () => {
             placeholder="Contraseña"
             secureTextEntry
             placeholderTextColor="#B0BEC5"
+            value={password}
           />
 
-          <TouchableOpacity style={styles.forgotPasswordContainer}>
+          <TouchableOpacity style={styles.forgotPasswordContainer} onPress={() => navigation.navigate('ForgotPassword')}>
             <Text style={styles.forgotPasswordText}>Recuperar contraseña</Text>
           </TouchableOpacity>
 
-          <Button
-            mode="contained"
-            style={styles.loginButton}
-            onPress={handleSignIn}  // Solo llama a la función handleSignIn aquí
->
+          <Button mode="contained" style={styles.loginButton} onPress={handleSignIn}>
             Iniciar sesión
           </Button>
-
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -135,6 +160,10 @@ const styles = StyleSheet.create({
   },
   loginButton: {
     backgroundColor: '#003366',
+  },
+  errorText: {
+    color: 'red',
+    marginBottom: 16,
   },
 });
 

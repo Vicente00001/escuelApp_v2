@@ -7,9 +7,11 @@ import NewsScreen from './screens/NewsScreen';
 import AsistScreen from './screens/AsistScreen';
 import ForumScreen from './screens/ForumScreen';
 import GradesScreen from './screens/GradesScreen';
+import ForgotPasswordScreen from './screens/ForgotPasswordScreen'; // Importar la nueva pantalla
+import { UserProvider } from './services/UserContext'; // Importa el UserProvider
 
-import {getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth'; 
-import {intitializeApp } from 'firebase/app';
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth'; 
+import { initializeApp } from 'firebase/app';
 import { firebaseConfig } from './firebase-config';
 
 const Stack = createStackNavigator();
@@ -24,6 +26,7 @@ function MainNavigator() {
         <Stack.Screen name="Attendance" component={AsistScreen} options={{ title: 'Revisar Asistencia' }} />
         <Stack.Screen name="Forum" component={ForumScreen} options={{ title: 'Foro de Curso' }} />
         <Stack.Screen name="Grades" component={GradesScreen} options={{ title: 'Revisar Calificaciones' }} />
+        <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} options={{ title: 'Recuperar Contraseña' }} /> 
       </Stack.Navigator>
     </NavigationContainer>
   );
@@ -31,6 +34,9 @@ function MainNavigator() {
 
 export default function App() {
   return (
-    <MainNavigator />
+    <UserProvider> {/* Envuelve tu aplicación en el UserProvider */}
+      <MainNavigator />
+    </UserProvider>
   );
 }
+
